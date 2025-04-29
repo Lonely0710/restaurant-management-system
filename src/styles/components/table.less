@@ -1,0 +1,54 @@
+@import '../variables.less';
+@import '../mixins.less';
+
+// 基础表格样式
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: @font-size-md;
+  color: @gray-8;
+
+  th, td {
+    padding: @spacing-md;
+    text-align: left;
+    border-bottom: 1px solid @gray-3;
+  }
+
+  th {
+    font-weight: 500;
+    background-color: @gray-1;
+  }
+
+  tr:hover {
+    background-color: @gray-1;
+  }
+}
+
+// 表格边框样式
+.table-bordered {
+  border: 1px solid @gray-3;
+
+  th, td {
+    border: 1px solid @gray-3;
+  }
+}
+
+// 表格紧凑样式
+.table-sm {
+  th, td {
+    padding: @spacing-sm;
+  }
+}
+
+// 表格条纹样式
+.table-striped {
+  tbody tr:nth-of-type(odd) {
+    background-color: @gray-1;
+  }
+}
+
+// 表格响应式容器
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
