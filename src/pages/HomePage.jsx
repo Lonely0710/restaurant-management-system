@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/HomePage.jsx
 import React, { useState } from 'react';
 // 导入 FloatButton
@@ -84,9 +85,9 @@ function HomePage() {
         icon={<DatabaseOutlined />}
         tooltip={<div>测试数据库连接</div>} // 鼠标悬停时的提示文本
         onClick={handleCheckDbConnection}
-        loading={checkingDb}
-      // 可以通过 style 或 position 属性调整位置
-      // 例如: style={{ right: 50, bottom: 100 }}
+        loading={checkingDb ? true : undefined}
+        // 可以通过 style 或 position 属性调整位置
+        style={{ right: 50, bottom: 100 }}
       />
     </>
   );

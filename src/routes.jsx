@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import AdminLayout from './admin/AdminLayout';
 import Orders from './admin/Orders';
 import Dishes from './admin/Dishes';
+import Users from './admin/Users';
 import CustomerLayout from './customer/CustomerLayout';
 import Ordering from './customer/Ordering';
 import Payment from './customer/Payment';
@@ -23,12 +24,20 @@ const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           {
+            index: true,
+            element: <Orders />
+          },
+          {
             path: 'orders',
             element: <Orders />
           },
           {
             path: 'dishes',
             element: <Dishes />
+          },
+          {
+            path: 'users',
+            element: <Users />
           }
         ]
       },

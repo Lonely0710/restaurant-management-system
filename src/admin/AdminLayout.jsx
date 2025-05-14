@@ -2,7 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { Layout, Menu, Breadcrumb, Typography } from 'antd';
-import { ShoppingCartOutlined, AppstoreOutlined, HomeOutlined } from '@ant-design/icons';
+import {
+  ShoppingCartOutlined,
+  AppstoreOutlined,
+  HomeOutlined,
+  UserOutlined,
+  LogoutOutlined
+} from '@ant-design/icons';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
@@ -17,22 +23,19 @@ function AdminLayout() {
   }, [location]);
 
   const menuItems = [
+    { key: 'dishes', label: <Link to="/admin/dishes">菜品管理</Link>, icon: <AppstoreOutlined /> },
+    { key: 'orders', label: <Link to="/admin/orders">订单管理</Link>, icon: <ShoppingCartOutlined /> },
+    { key: 'users', label: <Link to="/admin/users">用户管理</Link>, icon: <UserOutlined /> },
     {
-      key: '/admin/orders',
-      icon: <ShoppingCartOutlined />,
-      label: <Link to="/admin/orders">订单管理</Link>,
-    },
-    {
-      key: '/admin/dishes',
-      icon: <AppstoreOutlined />,
-      label: <Link to="/admin/dishes">菜品管理</Link>,
-    },
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: <Link to="/">返回首页</Link>,
-      style: { marginTop: 'auto', marginBottom: '16px' } 
-    },
+      key: 'logout',
+      label: '退出登录',
+      icon: <LogoutOutlined />,
+      danger: true,
+      onClick: () => {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+    }
   ];
 
   // Determine breadcrumb items based on path
@@ -77,8 +80,6 @@ function AdminLayout() {
             <Outlet />
           </div>
         </Content>
-        {/* Optional Footer */}
-        {/* <Footer style={{ textAlign: 'center' }}>Ant Design ©2023 Created by Ant UED</Footer> */}
       </Layout>
     </Layout>
   );
