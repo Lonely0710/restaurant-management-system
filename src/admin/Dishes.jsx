@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, message, Spin, Typography, Tag, Tooltip, notification, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api from '../utils/api'; // 替换为自定义api实例
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -26,7 +26,7 @@ function Dishes() {
   const fetchDishes = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/menu');
+      const response = await api.get('/menu');
       const menuData = Array.isArray(response.data) ? response.data : [];
       setDishes(menuData);
     } catch (error) {
@@ -44,7 +44,7 @@ function Dishes() {
   // 获取分类数据
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/api/categories');
+      const response = await api.get('/categories');
       const categoriesData = Array.isArray(response.data) ? response.data : [];
       setCategories(categoriesData);
     } catch (error) {
@@ -100,7 +100,7 @@ function Dishes() {
       const values = await categoryForm.validateFields();
       setLoading(true);
 
-      await axios.post('/api/categories', values);
+      await api.post('/categories', values);
       notificationApi.success({
         message: <Typography.Text strong>分类添加成功</Typography.Text>,
         description: `分类 "${values.category_name}" 已成功添加！`,
@@ -139,7 +139,7 @@ function Dishes() {
 
       if (editingDish) {
         // --- Edit Logic ---
-        await axios.put(`/api/menu/${editingDish.menu_id}`, values);
+        await api.put(`/menu/${editingDish.menu_id}`, values);
         notificationApi.success({
           message: <Typography.Text strong>菜品更新成功</Typography.Text>,
           description: `菜品 "${values.name}" 已成功更新！`,
@@ -148,7 +148,7 @@ function Dishes() {
         });
       } else {
         // --- Add Logic ---
-        await axios.post('/api/menu', values);
+        await api.post('/menu', values);
         notificationApi.success({
           message: <Typography.Text strong>菜品添加成功</Typography.Text>,
           description: `菜品 "${values.name}" 已成功添加！`,
@@ -184,7 +184,7 @@ function Dishes() {
   const handleDelete = async (menu_id, name) => {
     setLoading(true);
     try {
-      await axios.delete(`/api/menu/${menu_id}`);
+      await api.delete(`/menu/${menu_id}`);
       notificationApi.success({
         message: <Typography.Text strong>菜品删除成功</Typography.Text>,
         description: `菜品 "${name}" 已成功删除！`,
@@ -361,6 +361,7 @@ function Dishes() {
         destroyOnClose // Reset form state when modal is closed
         style={{ top: 20 }}
         className="dish-modal"
+        width={800} // 增加弹窗宽度
       >
         <Form form={form} layout="vertical" name="dish_form">
           <Form.Item
@@ -436,6 +437,7 @@ function Dishes() {
         confirmLoading={loading}
         style={{ top: 20 }}
         className="category-modal"
+        width={600} // 增加弹窗宽度
       >
         <Form form={categoryForm} layout="vertical">
           <Form.Item

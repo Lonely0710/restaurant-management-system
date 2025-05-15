@@ -2,24 +2,22 @@ import { pool } from '../config/db.js';
 
 // 获取所有订单
 const getAllOrders = async () => {
-    const [rows] = await pool.query(`
-        SELECT o.order_id, o.order_date, u.name as user_name, u.phone as user_phone, 
-        (SELECT SUM(oi.quantity * m.price) FROM OrderItem oi 
-         JOIN Menu m ON oi.menu_id = m.menu_id 
-         WHERE oi.order_id = o.order_id) as total_amount
-        FROM Orders o
-        JOIN Users u ON o.user_id = u.user_id
-        ORDER BY o.order_date DESC
-    `);
+    // 使用新的GetAllOrders存储过程
+    const [result] = await pool.query('CALL GetAllOrders()');
 
-    return rows;
+    // 由于GetAllOrders返回结果是一个结果集，直接返回第一个结果集
+    return result[0].map(order => ({
+        ...order,
+        total_amount: parseFloat(order.total_amount || 0)
+    }));
 };
 
 // 获取单个订单
 const getOrderById = async (id) => {
     // 获取订单基本信息
     const [orderInfo] = await pool.query(`
-        SELECT o.order_id, o.order_date, u.user_id, u.name as user_name, u.phone as user_phone
+        SELECT o.order_id, o.order_date, u.user_id, u.name as user_name, 
+               u.phone as user_phone
         FROM Orders o
         JOIN Users u ON o.user_id = u.user_id
         WHERE o.order_id = ?
@@ -29,30 +27,29 @@ const getOrderById = async (id) => {
         return null;
     }
 
-    // 获取订单项
-    const [orderItems] = await pool.query(`
-        SELECT oi.menu_id, m.name, oi.quantity, m.price, (oi.quantity * m.price) as item_total
-        FROM OrderItem oi
-        JOIN Menu m ON oi.menu_id = m.menu_id
-        WHERE oi.order_id = ?
-    `, [id]);
+    // 使用GetOrderDetails存储过程获取订单项
+    const [orderItems] = await pool.query('CALL GetOrderDetails(?)', [id]);
 
     // 获取支付信息
     const [payments] = await pool.query(`
-        SELECT payment_id, amount, method
+        SELECT payment_id, amount, method as payment_method
         FROM Payment
         WHERE order_id = ?
     `, [id]);
 
     // 计算总金额
-    const totalAmount = orderItems.reduce((sum, item) => sum + parseFloat(item.item_total), 0);
+    const totalAmount = orderItems[0].reduce((sum, item) => sum + parseFloat(item.subtotal), 0);
+
+    // 确定订单状态
+    const state = payments.length > 0 ? 2 : 0; // 已支付:2, 未支付:0
 
     // 返回完整订单信息
     return {
         ...orderInfo[0],
-        items: orderItems,
+        items: orderItems[0],
         payments: payments,
-        total_amount: totalAmount
+        total_amount: totalAmount,
+        status: state // 添加状态字段：2表示已支付，0表示未支付
     };
 };
 
@@ -104,17 +101,9 @@ const createOrder = async (orderData, connection = null) => {
 
 // 获取用户的所有订单
 const getOrdersByUserId = async (userId) => {
-    const [rows] = await pool.query(`
-        SELECT o.order_id, o.order_date,
-        (SELECT SUM(oi.quantity * m.price) FROM OrderItem oi 
-         JOIN Menu m ON oi.menu_id = m.menu_id 
-         WHERE oi.order_id = o.order_id) as total_amount
-        FROM Orders o
-        WHERE o.user_id = ?
-        ORDER BY o.order_date DESC
-    `, [userId]);
-
-    return rows;
+    // 使用存储过程
+    const [result] = await pool.query('CALL GetUserOrders(?)', [userId]);
+    return result[0];
 };
 
 export {

@@ -2,13 +2,10 @@ import { pool } from '../config/db.js';
 
 // 获取所有菜品
 const getAllMenuItems = async () => {
-    const [rows] = await pool.query(`
-        SELECT m.menu_id, m.name, m.price, m.category_id, m.style, c.category_name 
-        FROM Menu m
-        LEFT JOIN Category c ON m.category_id = c.category_id
-    `);
+    // 使用存储过程
+    const [result] = await pool.query('CALL GetAllMenusWithCategory()');
 
-    return rows.map(item => ({
+    return result[0].map(item => ({
         menu_id: item.menu_id,
         name: item.name,
         price: parseFloat(item.price),
@@ -38,15 +35,20 @@ const getMenuItemById = async (id) => {
     };
 };
 
-// 创建菜品
+// 使用AddMenu存储过程创建菜品
 const createMenuItem = async (menuData) => {
     const { name, price, category_id, style } = menuData;
+
+    // 调用AddMenu存储过程
     const [result] = await pool.query(
-        'INSERT INTO Menu (name, price, category_id, style) VALUES (?, ?, ?, ?)',
+        'CALL AddMenu(?, ?, ?, ?)',
         [name, price, category_id, style]
     );
 
-    return getMenuItemById(result.insertId);
+    // 获取存储过程返回的菜品ID
+    const menuId = result[0][0].menu_id;
+
+    return getMenuItemById(menuId);
 };
 
 // 更新菜品

@@ -1,21 +1,22 @@
 import express from 'express';
-import * as menuController from '../controllers/menu.js';
+import { getAllMenuItems, getMenuItemById, createMenuItem, updateMenuItem, deleteMenuItem } from '../controllers/menu.js';
+import { authenticateJWT, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// 获取所有菜品
-router.get('/', menuController.getAllMenuItems);
+// 获取所有菜品（公开）
+router.get('/', getAllMenuItems);
 
-// 获取单个菜品
-router.get('/:id', menuController.getMenuItemById);
+// 获取单个菜品（公开）
+router.get('/:id', getMenuItemById);
 
-// 创建菜品
-router.post('/', menuController.createMenuItem);
+// 添加菜品（仅管理员）
+router.post('/', authenticateJWT, isAdmin, createMenuItem);
 
-// 更新菜品
-router.put('/:id', menuController.updateMenuItem);
+// 更新菜品（仅管理员）
+router.put('/:id', authenticateJWT, isAdmin, updateMenuItem);
 
-// 删除菜品
-router.delete('/:id', menuController.deleteMenuItem);
+// 删除菜品（仅管理员）
+router.delete('/:id', authenticateJWT, isAdmin, deleteMenuItem);
 
 export default router; 

@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "node server/index.js",
-    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "dev:server": "./start-server.sh",
+    "dev:all": "concurrently --kill-others --names \"后端,前端\" \"npm run dev:server\" \"npm run dev\"",
+    "start": "npm run dev:all",
+    "backend": "npm run dev:server",
+    "frontend": "npm run dev",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -14,9 +17,11 @@
   "dependencies": {
     "antd": "^5.24.9",
     "axios": "^1.9.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "mysql2": "^3.14.1",
     "react": "^19.0.0",

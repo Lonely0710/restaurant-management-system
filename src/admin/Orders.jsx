@@ -1,9 +1,10 @@
 // src/admin/Orders.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Space, Tag, Button, Modal, Spin, Typography, message, Descriptions, List, Card, Avatar, Badge, Divider } from 'antd';
-import { EyeOutlined, CheckOutlined, CloseOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { Table, Space, Tag, Button, Modal, Spin, Typography, message, Descriptions, List, Card, Avatar, Badge, Divider, Empty } from 'antd';
+import { EyeOutlined, CheckOutlined, CloseOutlined, ShoppingCartOutlined, UserOutlined, PhoneOutlined, ClockCircleOutlined, ShoppingOutlined, CreditCardOutlined } from '@ant-design/icons';
+import api from '../utils/api';
 import moment from 'moment';
+import '../styles/OrderDetail.css';
 
 const { Title, Text } = Typography;
 
@@ -19,7 +20,7 @@ function Orders() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/orders');
+      const response = await api.get('/orders');
       const ordersData = Array.isArray(response.data) ? response.data : [];
       setOrders(ordersData);
     } catch (error) {
@@ -44,7 +45,7 @@ function Orders() {
   const fetchOrderDetails = async (orderId) => {
     setDetailsLoading(true);
     try {
-      const response = await axios.get(`/api/orders/${orderId}`);
+      const response = await api.get(`/orders/${orderId}`);
       setSelectedOrder(response.data);
     } catch (error) {
       console.error(`获取订单详情失败 ID=${orderId}:`, error);
@@ -103,9 +104,9 @@ function Orders() {
     },
     {
       title: '手机号',
-      dataIndex: 'phone',
-      key: 'phone',
-      render: (text) => text || '-',
+      dataIndex: 'user_phone',
+      key: 'user_phone',
+      render: (phone) => phone || '-',
     },
     {
       title: '订单时间',
@@ -184,121 +185,134 @@ function Orders() {
 
       {/* 订单详情弹窗 */}
       <Modal
-        title="订单详情"
+        title={null}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        footer={[
-          <Button key="back" onClick={() => setIsModalVisible(false)}>
-            关闭
-          </Button>
-        ]}
-        width={700}
-        style={{ top: 20 }}
+        footer={null}
+        width={800}
+        bodyStyle={{ padding: 0 }}
+        destroyOnClose
+        centered
         className="order-detail-modal"
+        closeIcon={null}
       >
         <Spin spinning={detailsLoading}>
-          {selectedOrder ? (
-            <div>
-              {/* 基本信息 */}
-              <Descriptions title="订单信息" bordered column={2}>
-                <Descriptions.Item label="订单ID">{selectedOrder.order_id}</Descriptions.Item>
-                <Descriptions.Item label="订单状态">{getStatusTag(selectedOrder.status)}</Descriptions.Item>
-                <Descriptions.Item label="用户">{selectedOrder.user_name || '顾客' + selectedOrder.user_id}</Descriptions.Item>
-                <Descriptions.Item label="手机号">{selectedOrder.phone || '未提供'}</Descriptions.Item>
-                <Descriptions.Item label="下单时间" span={2}>
-                  {moment(selectedOrder.order_time).format('YYYY-MM-DD HH:mm:ss')}
-                </Descriptions.Item>
-                <Descriptions.Item label="备注" span={2}>
-                  {selectedOrder.remark || '无备注'}
-                </Descriptions.Item>
-              </Descriptions>
-
-              <Divider />
-
-              {/* 订单项目 */}
-              <Title level={4}>订单项目</Title>
-              {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                <List
-                  itemLayout="horizontal"
-                  dataSource={selectedOrder.items}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <Card style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <div>
-                            <Text strong>{item.dish_name}</Text>
-                            {item.style && <Tag color="green" style={{ marginLeft: 8 }}>{item.style}</Tag>}
-                          </div>
-                          <div>
-                            <Badge count={item.quantity} showZero style={{ backgroundColor: '#52c41a' }} />
-                            <Text type="secondary" style={{ marginLeft: 16 }}>
-                              单价：￥{Number(item.price).toFixed(2)}
-                            </Text>
-                            <Text strong style={{ marginLeft: 16 }}>
-                              小计：￥{Number(item.price * item.quantity).toFixed(2)}
-                            </Text>
-                          </div>
-                        </div>
-                      </Card>
-                    </List.Item>
-                  )}
-                />
-              ) : (
-                <Text type="secondary">无订单项目数据</Text>
-              )}
-
-              <Divider />
-
-              {/* 支付信息 */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Title level={4}>支付信息</Title>
-                <Text strong style={{ fontSize: 18 }}>
-                  总计：￥{Number(selectedOrder.total_amount).toFixed(2)}
-                </Text>
+          <div className="order-header">
+            <div className="order-header-left">
+              <h2>订单 #{selectedOrder?.order_id}</h2>
+              <div className="order-time">
+                <ClockCircleOutlined /> {moment(selectedOrder?.order_time).format('YYYY-MM-DD HH:mm:ss')}
               </div>
-              {selectedOrder.payment ? (
-                <Descriptions bordered column={2}>
-                  <Descriptions.Item label="支付方式">
-                    {selectedOrder.payment.payment_method === 'cash' ? '现金' :
-                      selectedOrder.payment.payment_method === 'wechat' ? '微信支付' :
-                        selectedOrder.payment.payment_method === 'alipay' ? '支付宝' :
-                          selectedOrder.payment.payment_method}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="支付状态">
-                    {selectedOrder.payment.status === 1 ?
-                      <Tag color="green">已支付</Tag> :
-                      <Tag color="red">未支付</Tag>}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="支付时间">
-                    {selectedOrder.payment.payment_time ?
-                      moment(selectedOrder.payment.payment_time).format('YYYY-MM-DD HH:mm:ss') :
-                      '未支付'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="交易号">
-                    {selectedOrder.payment.transaction_id || '无交易号'}
-                  </Descriptions.Item>
-                </Descriptions>
-              ) : (
-                <Text type="secondary">暂无支付信息</Text>
+            </div>
+            <div className="order-header-right">
+              <Badge
+                status={selectedOrder?.status === 2 ? "success" : "warning"}
+                text={selectedOrder?.status === 2 ? "已支付" : "未支付"}
+              />
+            </div>
+            <Button
+              type="text"
+              icon={<CloseOutlined />}
+              onClick={() => setIsModalVisible(false)}
+              className="close-button"
+            />
+          </div>
+
+          <Divider style={{ margin: '0 0 16px 0' }} />
+
+          {/* 客户信息部分 */}
+          <div className="info-section">
+            <h3>
+              <UserOutlined /> 客户信息
+            </h3>
+            <div className="customer-info">
+              <div className="info-item">
+                <span className="label">姓名：</span>
+                <span className="value">{selectedOrder?.user_name || (selectedOrder?.user_id ? '顾客' + selectedOrder?.user_id : '-')}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">电话：</span>
+                <span className="value">{selectedOrder?.user_phone || '未提供'}</span>
+              </div>
+              {selectedOrder?.remark && (
+                <div className="info-item">
+                  <span className="label">备注：</span>
+                  <span className="value">{selectedOrder.remark}</span>
+                </div>
               )}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <Text type="secondary">加载订单详情...</Text>
+          </div>
+
+          <Divider style={{ margin: '8px 0' }} />
+
+          {/* 订单项目部分 */}
+          <div className="info-section">
+            <h3>
+              <ShoppingOutlined /> 订单项目
+            </h3>
+            <div className="order-items">
+              {selectedOrder?.items && selectedOrder?.items.length > 0 ? (
+                <>
+                  {selectedOrder.items.map((item, index) => (
+                    <div key={index} className="order-item">
+                      <div className="item-info">
+                        <span className="item-name">{item.name}</span>
+                        <span className="item-price">¥{Number(item.price || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="item-quantity">
+                        <span>×{item.quantity || 0}</span>
+                        <span className="item-subtotal">¥{Number((item.price || 0) * (item.quantity || 0)).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="order-total">
+                    <span>总计:</span>
+                    <span className="total-amount">¥{Number(selectedOrder?.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                </>
+              ) : (
+                <Empty description="暂无订单项目" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              )}
             </div>
-          )}
+          </div>
+
+          <Divider style={{ margin: '8px 0' }} />
+
+          {/* 支付信息部分 */}
+          <div className="info-section">
+            <h3>
+              <CreditCardOutlined /> 支付信息
+            </h3>
+            {selectedOrder?.payments && selectedOrder.payments.length > 0 ? (
+              <div className="payment-info">
+                <div className="info-item">
+                  <span className="label">支付方式：</span>
+                  <span className="value">{selectedOrder.payments[0].payment_method === 'cash' ? '现金' :
+                    selectedOrder.payments[0].payment_method === 'wechat' ? '微信支付' :
+                      selectedOrder.payments[0].payment_method === 'alipay' ? '支付宝' :
+                        selectedOrder.payments[0].payment_method}</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">支付金额：</span>
+                  <span className="value highlight">¥{Number(selectedOrder.payments[0].amount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无支付记录"
+                style={{ margin: '16px 0' }}
+              />
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <Button type="primary" onClick={() => setIsModalVisible(false)}>
+              关闭
+            </Button>
+          </div>
         </Spin>
       </Modal>
-
-      {/* 添加全局CSS样式 */}
-      <style jsx="true">{`
-        .order-detail-modal .ant-modal-content {
-          background-color: #f8f8ff;
-        }
-        .order-detail-modal .ant-modal-header {
-          background-color: #f0f8ff;
-        }
-      `}</style>
     </div>
   );
 }

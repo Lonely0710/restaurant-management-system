@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Select, Space, Popconfirm, message, Spin, Typography, Tag, Tooltip, Badge, DatePicker } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api from '../utils/api'; // 替换为自定义api实例
 import moment from 'moment';
 
 const { Title } = Typography;
@@ -20,7 +20,7 @@ function Users() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/users');
+            const response = await api.get('/users');
             const userData = Array.isArray(response.data) ? response.data : [];
             setUsers(userData);
         } catch (error) {
@@ -78,7 +78,7 @@ function Users() {
                     delete values.password_hash;
                 }
 
-                await axios.put(`/api/users/${editingUser.user_id}`, values);
+                await api.put(`/users/${editingUser.user_id}`, values);
                 messageApi.success({
                     content: `用户 "${values.name}" 更新成功!`,
                     icon: <EditOutlined style={{ color: '#108ee9' }} />,
@@ -92,22 +92,22 @@ function Users() {
                     return;
                 }
 
-                await axios.post('/api/users', values);
+                await api.post('/users', values);
                 messageApi.success({
                     content: `用户 "${values.name}" 添加成功!`,
                     icon: <PlusOutlined style={{ color: '#52c41a' }} />,
                 });
             }
             setIsModalOpen(false);
-            fetchUsers(); // Refresh the list
+            fetchUsers(); // 刷新用户列表
         } catch (error) {
-            console.error('Form validation/submission failed:', error);
-            if (error.response) {
-                messageApi.error(error.response.data?.error || '服务器错误');
+            console.error('Form validation or submission failed:', error);
+            if (error.response?.data?.error) {
+                messageApi.error(error.response.data.error);
             } else if (error.errorFields) {
                 messageApi.error('请检查表单输入!');
             } else {
-                messageApi.error('操作失败!');
+                messageApi.error('操作失败，请稍后重试!');
             }
         } finally {
             setLoading(false);
@@ -119,7 +119,7 @@ function Users() {
         setLoading(true);
         try {
             const newStatus = currentStatus === 1 ? 0 : 1;
-            await axios.put(`/api/users/${userId}`, {
+            await api.put(`/users/${userId}`, {
                 is_active: newStatus
             });
             messageApi.success(`用户 "${userName}" 状态已更新!`);

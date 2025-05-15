@@ -1,0 +1,178 @@
+/* 订单详情模态框样式 */
+.order-detail-modal .ant-modal-body {
+    padding: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* 订单头部 */
+.order-header {
+    position: relative;
+    padding: 16px 24px;
+    background: #e6f7ff;
+    /* 更淡的蓝色背景 */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.order-header-left {
+    flex: 1;
+}
+
+.order-header-right {
+    margin-right: 30px;
+    display: flex;
+    align-items: center;
+}
+
+.order-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    color: #1890ff;
+    /* 蓝色标题 */
+}
+
+.order-time {
+    color: #888;
+    font-size: 14px;
+}
+
+.close-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+}
+
+/* 内容部分 */
+.info-section {
+    padding: 0 24px 16px;
+}
+
+.info-section h3 {
+    margin: 16px 0 12px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    color: #1890ff;
+    /* 蓝色小标题 */
+}
+
+.info-section h3 .anticon {
+    margin-right: 8px;
+    color: #1890ff;
+    /* 图标颜色 */
+}
+
+/* 客户信息和支付信息 */
+.customer-info,
+.payment-info {
+    background: #f9f9f9;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 3px solid #1890ff;
+    /* 左侧边框 */
+}
+
+.info-item {
+    margin-bottom: 8px;
+    display: flex;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.label {
+    color: #666;
+    min-width: 70px;
+    display: inline-block;
+}
+
+.value {
+    flex: 1;
+}
+
+.value.highlight {
+    color: #f5222d;
+    font-weight: bold;
+}
+
+/* 订单项目 */
+.order-items {
+    background: #f9f9f9;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 3px solid #52c41a;
+    /* 绿色左侧边框 */
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e8e8e8;
+}
+
+.order-item:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-name {
+    font-weight: 500;
+    font-size: 15px;
+}
+
+.item-price {
+    color: #888;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.item-quantity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.item-subtotal {
+    font-weight: bold;
+    margin-top: 4px;
+    color: #52c41a;
+    /* 绿色价格 */
+}
+
+/* 总计 */
+.order-total {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    font-size: 16px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e8e8e8;
+}
+
+.total-amount {
+    font-weight: bold;
+    font-size: 22px;
+    color: #ff4d4f;
+    margin-left: 12px;
+}
+
+/* 底部 */
+.modal-footer {
+    padding: 16px 24px;
+    text-align: right;
+    background: #f5f5f5;
+    border-top: 1px solid #e8e8e8;
+}

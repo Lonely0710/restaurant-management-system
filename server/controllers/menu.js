@@ -3,28 +3,27 @@ import * as menuModel from '../models/menu.js';
 // 获取所有菜品
 export const getAllMenuItems = async (req, res) => {
     try {
-        const menuItems = await menuModel.getAllMenuItems();
-        return res.json(menuItems);
+        const dishes = await menuModel.getAllMenuItems();
+        res.json(dishes);
     } catch (error) {
-        console.error('查询Menu表出错:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('Error fetching menu items:', error);
+        res.status(500).json({ error: '获取菜品失败' });
     }
 };
 
 // 获取单个菜品
 export const getMenuItemById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const menuItem = await menuModel.getMenuItemById(id);
+        const dish = await menuModel.getMenuItemById(req.params.id);
 
-        if (!menuItem) {
+        if (!dish) {
             return res.status(404).json({ error: '菜品不存在' });
         }
 
-        return res.json(menuItem);
+        res.json(dish);
     } catch (error) {
-        console.error('查询菜品出错:', error);
-        return res.status(500).json({ error: error.message });
+        console.error(`Error fetching menu item ${req.params.id}:`, error);
+        res.status(500).json({ error: '获取菜品失败' });
     }
 };
 
@@ -63,14 +62,8 @@ export const createMenuItem = async (req, res) => {
 // 更新菜品
 export const updateMenuItem = async (req, res) => {
     try {
-        const { id } = req.params;
         const { name, price, category_id, style } = req.body;
-
-        // 验证菜品是否存在
-        const menuItem = await menuModel.getMenuItemById(id);
-        if (!menuItem) {
-            return res.status(404).json({ error: '菜品不存在' });
-        }
+        const menuId = req.params.id;
 
         // 验证必填字段
         if (!name || price === undefined) {
@@ -82,19 +75,25 @@ export const updateMenuItem = async (req, res) => {
             return res.status(400).json({ error: '价格必须大于0' });
         }
 
-        const updatedMenuItem = await menuModel.updateMenuItem(id, {
+        // 检查菜品是否存在
+        const existingDish = await menuModel.getMenuItemById(menuId);
+        if (!existingDish) {
+            return res.status(404).json({ error: '菜品不存在' });
+        }
+
+        const updatedDish = await menuModel.updateMenuItem(menuId, {
             name,
             price,
             category_id: category_id || null,
-            style: style !== undefined ? style : menuItem.style
+            style: style || null
         });
 
         res.json({
             message: '菜品更新成功',
-            dish: updatedMenuItem
+            dish: updatedDish
         });
     } catch (error) {
-        console.error('Error updating menu item:', error);
+        console.error(`Error updating menu item ${req.params.id}:`, error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -102,25 +101,27 @@ export const updateMenuItem = async (req, res) => {
 // 删除菜品
 export const deleteMenuItem = async (req, res) => {
     try {
-        const { id } = req.params;
+        const menuId = req.params.id;
 
-        // 验证菜品是否存在
-        const menuItem = await menuModel.getMenuItemById(id);
-        if (!menuItem) {
+        // 检查菜品是否存在
+        const existingDish = await menuModel.getMenuItemById(menuId);
+        if (!existingDish) {
             return res.status(404).json({ error: '菜品不存在' });
         }
 
-        // 检查菜品是否存在于订单中
-        const isUsed = await menuModel.checkMenuItemUsage(id);
+        // 检查菜品是否在订单中使用
+        const isUsed = await menuModel.checkMenuItemUsage(menuId);
         if (isUsed) {
-            return res.status(400).json({ error: '无法删除：该菜品已存在于订单中' });
+            return res.status(400).json({ error: '无法删除，该菜品已存在于订单中' });
         }
 
-        await menuModel.deleteMenuItem(id);
+        await menuModel.deleteMenuItem(menuId);
 
-        res.json({ message: '菜品删除成功' });
+        res.json({
+            message: '菜品删除成功'
+        });
     } catch (error) {
-        console.error('Error deleting menu item:', error);
+        console.error(`Error deleting menu item ${req.params.id}:`, error);
         res.status(500).json({ error: error.message });
     }
 }; 

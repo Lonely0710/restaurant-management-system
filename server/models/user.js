@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import bcrypt from 'bcrypt';
 
 // 获取所有用户
 const getAllUsers = async () => {
@@ -11,33 +12,54 @@ const getAllUsers = async () => {
 
 // 获取单个用户
 const getUserById = async (id) => {
-    const [rows] = await pool.query(`
-        SELECT user_id, name, phone, create_time, last_login_time, is_active, identity
-        FROM Users WHERE user_id = ?
-    `, [id]);
-
-    return rows[0] || null;
+    const [rows] = await pool.query('SELECT * FROM Users WHERE user_id = ?', [id]);
+    return rows.length ? rows[0] : null;
 };
 
 // 通过手机号获取用户
 const getUserByPhone = async (phone) => {
-    const [rows] = await pool.query(`
-        SELECT user_id, name, phone, password_hash, create_time, last_login_time, is_active, identity
-        FROM Users WHERE phone = ?
-    `, [phone]);
-
-    return rows[0] || null;
+    const [rows] = await pool.query('SELECT * FROM Users WHERE phone = ?', [phone]);
+    return rows.length ? rows[0] : null;
 };
 
-// 创建用户
+// 检查用户是否存在
+const userExists = async (userId) => {
+    const [rows] = await pool.query('SELECT 1 FROM Users WHERE user_id = ?', [userId]);
+    return rows.length > 0;
+};
+
+// 使用AddUser存储过程创建用户
 const createUser = async (userData) => {
-    const { name, phone, password_hash, identity = 2 } = userData;
+    const { name, phone, password, identity = 2 } = userData;
+
+    // 检查手机号是否已存在
+    const existingUser = await getUserByPhone(phone);
+    if (existingUser) {
+        throw new Error('该手机号已被注册');
+    }
+
+    // 密码哈希
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // 调用AddUser存储过程创建用户
     const [result] = await pool.query(
-        'INSERT INTO Users (name, phone, password_hash, identity, create_time) VALUES (?, ?, ?, ?, NOW())',
-        [name, phone, password_hash, identity]
+        'CALL AddUser(?, ?, ?, ?)',
+        [passwordHash, name, phone, identity]
     );
 
-    return getUserById(result.insertId);
+    // 获取存储过程返回的用户ID
+    const userId = result[0][0].user_id;
+
+    // 返回创建的用户信息
+    return {
+        user_id: userId,
+        name,
+        phone,
+        identity,
+        create_time: new Date(),
+        is_active: 1
+    };
 };
 
 // 更新用户
@@ -89,23 +111,61 @@ const updateUser = async (id, userData) => {
 };
 
 // 更新用户最后登录时间
-const updateLastLoginTime = async (id) => {
-    await pool.query('UPDATE Users SET last_login_time = NOW() WHERE user_id = ?', [id]);
-    return getUserById(id);
+const updateLastLoginTime = async (userId) => {
+    await pool.query(
+        'UPDATE Users SET last_login_time = NOW() WHERE user_id = ?',
+        [userId]
+    );
 };
 
-// 检查用户是否存在
-const userExists = async (id) => {
-    const [rows] = await pool.query('SELECT user_id FROM Users WHERE user_id = ?', [id]);
-    return rows.length > 0;
+// 验证用户登录
+const validateUser = async (phone, password) => {
+    const user = await getUserByPhone(phone);
+
+    if (!user) {
+        return null;
+    }
+
+    if (!user.is_active) {
+        throw new Error('账户已被禁用');
+    }
+
+    let isAuthenticated = false;
+
+    // 检测是否为测试账户（dummy_hash开头的密码）
+    if (user.password_hash && user.password_hash.startsWith('dummy_hash')) {
+        // 对于测试账户，如果密码是"123456"，则认为验证通过
+        isAuthenticated = password === "123456";
+        console.log('测试账户登录', isAuthenticated ? '成功' : '失败');
+    } else {
+        // 正常账户使用bcrypt验证
+        isAuthenticated = await bcrypt.compare(password, user.password_hash);
+    }
+
+    if (!isAuthenticated) {
+        return null;
+    }
+
+    // 更新最后登录时间
+    await updateLastLoginTime(user.user_id);
+
+    return {
+        user_id: user.user_id,
+        name: user.name,
+        phone: user.phone,
+        identity: user.identity,
+        create_time: user.create_time,
+        last_login_time: new Date()
+    };
 };
 
 export {
     getAllUsers,
     getUserById,
     getUserByPhone,
+    userExists,
     createUser,
     updateUser,
-    updateLastLoginTime,
-    userExists
+    validateUser,
+    updateLastLoginTime
 }; 
