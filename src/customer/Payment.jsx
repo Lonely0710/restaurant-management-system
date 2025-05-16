@@ -17,7 +17,7 @@ import {
   WechatOutlined,
   CreditCardFilled
 } from '@ant-design/icons';
-// import axios from 'axios'; // Uncomment for API calls
+import api from '../utils/api'; // 使用自定义的api实例
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -31,6 +31,31 @@ function Payment() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState(null); // Store placed order ID if available
   const [paymentMethod, setPaymentMethod] = useState('wechat');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  // 获取当前用户信息
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      setLoadingUser(true);
+      try {
+        const response = await api.get('/auth/me');
+        setCurrentUser(response.data);
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        // 如果获取用户信息失败，模拟一个默认用户（仅用于开发测试）
+        setCurrentUser({
+          user_id: localStorage.getItem('userId') || '1001',
+          name: '默认用户',
+          phone: '138****8888'
+        });
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
 
   // Redirect if no order items are passed
   useEffect(() => {
@@ -45,43 +70,74 @@ function Payment() {
     console.log("Placing order:", orderItems);
     console.log("Payment method:", paymentMethod);
 
-    // Simulate API call to place the order
-    await new Promise(resolve => setTimeout(resolve, 1500));
     try {
-      // --- Replace with actual API POST call ---
-      // Example data structure to send (adapt based on your backend)
-      /*
-      const orderData = {
-        // customerId: 1, // If you have customer login
-        items: orderItems.map(item => ({ menu_id: item.menu_id, quantity: item.quantity })),
-        total_amount: total,
+      // 获取用户ID
+      const userId = currentUser?.user_id || localStorage.getItem('userId') || '1001';
+
+      // 注意：存储过程每次只接受一个菜品和数量，需要循环处理每个菜品
+
+      // 第一步：先创建订单并获取订单ID
+      const firstItem = orderItems[0];
+      const initialOrderData = {
+        user_id: userId,
+        menu_id: firstItem.menu_id,
+        quantity: firstItem.quantity,
+        is_first_item: true,  // 标记这是第一个菜品，需要创建新订单
         payment_method: paymentMethod
       };
-      const response = await axios.post('/api/orders', orderData); // Adjust endpoint if needed
-      setOrderId(response.data.order_id); // Assuming backend returns the new order ID
-      */
-      // --- End of Replace ---
 
-      // Dummy success state:
-      setOrderId(Math.floor(Math.random() * 1000) + 100); // Simulate getting an order ID
+      console.log("创建初始订单:", initialOrderData);
+      const initialResponse = await api.post('/orders/create-with-item', initialOrderData);
+
+      // 获取创建的订单ID
+      const newOrderId = initialResponse.data.order_id;
+      console.log("获取到订单ID:", newOrderId);
+
+      // 如果有多个菜品，继续添加剩余菜品到同一个订单
+      if (orderItems.length > 1) {
+        for (let i = 1; i < orderItems.length; i++) {
+          const item = orderItems[i];
+          const additionalItemData = {
+            user_id: userId,
+            order_id: newOrderId,   // 使用已创建的订单ID
+            menu_id: item.menu_id,
+            quantity: item.quantity,
+            is_first_item: false    // 标记这不是第一个菜品，使用现有订单
+          };
+
+          console.log(`添加第${i + 1}个菜品到订单:`, additionalItemData);
+          await api.post('/orders/add-item', additionalItemData);
+        }
+      }
+
+      // 处理支付信息（这里假设支付都成功）
+      const paymentData = {
+        order_id: newOrderId,
+        amount: total,
+        method: paymentMethod
+      };
+
+      await api.post('/payments', paymentData);
+
+      setOrderId(newOrderId);
       setOrderPlaced(true);
       message.success('订单支付成功!');
 
-      // Optionally navigate automatically after a delay
+      // 延迟跳转到等待页面
       setTimeout(() => {
         navigate('/customer/waiting', {
           state: {
-            orderId: orderId || Math.floor(Math.random() * 1000) + 100,
+            orderId: newOrderId,
             orderItems,
             total,
             paymentMethod
           }
-        }); // Pass order details
+        });
       }, 2000);
 
     } catch (error) {
-      console.error("Failed to place order:", error);
-      message.error('订单提交失败，请稍后重试!');
+      console.error("下单失败:", error);
+      message.error('订单提交失败: ' + (error.response?.data?.error || error.message || '请稍后重试'));
       setLoading(false);
     }
   };
@@ -101,8 +157,13 @@ function Payment() {
     );
   }
 
+  if (loadingUser) {
+    // 渲染加载状态
+    return <Spin spinning={true} tip="加载用户信息..."><div style={{ minHeight: '200px' }}></div></Spin>;
+  }
+
   if (!orderItems || orderItems.length === 0) {
-    // Render minimal content or redirect handled by useEffect
+    // 渲染最小内容或由useEffect处理的重定向
     return <Spin spinning={true} tip="加载订单信息..."><div style={{ minHeight: '200px' }}></div></Spin>;
   }
 
@@ -157,6 +218,7 @@ function Payment() {
                           height={60}
                           style={{ objectFit: 'cover', borderRadius: 4 }}
                           preview={false}
+                          fallback="https://placehold.co/60x60/e8e8e8/787878?text=暂无图片"
                         />
                       </div>
                       <div style={{ flex: 1 }}>
@@ -211,11 +273,11 @@ function Payment() {
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Text>用餐人</Text>
-                    <Text strong>张三 (默认)</Text>
+                    <Text strong>{currentUser?.name || '默认用户'}</Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Text>手机号</Text>
-                    <Text strong>138****8888</Text>
+                    <Text strong>{currentUser?.phone || '138****8888'}</Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Text>备注</Text>

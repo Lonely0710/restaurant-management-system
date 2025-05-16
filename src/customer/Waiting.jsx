@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Result, Button, Spin, Typography, Steps, Card, Tag, Divider,
-  Timeline, List, Space, Statistic, Row, Col, Progress, Alert
+  Timeline, List, Space, Statistic, Row, Col, Progress, Alert,
+  Image, message, notification
 } from 'antd';
 import {
   ClockCircleOutlined, CheckCircleOutlined, SyncOutlined,
@@ -10,6 +11,7 @@ import {
   FieldTimeOutlined, ShoppingOutlined
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import api from '../utils/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -23,6 +25,8 @@ function Waiting() {
   const [currentStep, setCurrentStep] = useState(0);
   const [remainingTime, setRemainingTime] = useState(10 * 60 * 1000); // 10 minutes in ms
   const [progressPercent, setProgressPercent] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [orderDetails, setOrderDetails] = useState(null);
 
   // 假设的订单状态
   const orderSteps = [
@@ -34,23 +38,74 @@ function Waiting() {
 
   // 模拟订单进度更新
   useEffect(() => {
-    // 模拟1分钟后进入制作中
+    // 如果有真实订单ID，可以轮询获取订单状态
+    if (orderId) {
+      const fetchOrderStatus = async () => {
+        setLoading(true);
+        try {
+          console.log('获取订单状态:', orderId);
+          // 真实API调用 - 如果后端API已准备好，可以取消注释
+          /*
+          const response = await api.get(`/orders/${orderId}`);
+          const orderData = response.data;
+          setOrderDetails(orderData);
+          
+          // 根据订单状态更新步骤
+          if (orderData.status === 0) {
+            setCurrentStep(0); // 已下单
+            setProgressPercent(25);
+          } else if (orderData.status === 1) {
+            setCurrentStep(1); // 制作中
+            setProgressPercent(50);
+          } else if (orderData.status === 2) {
+            setCurrentStep(2); // 即将完成
+            setProgressPercent(75);
+          } else if (orderData.status === 3) {
+            setCurrentStep(3); // 已完成
+            setProgressPercent(100);
+          }
+          */
+        } catch (error) {
+          console.error('获取订单状态失败:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // 初始获取一次
+      fetchOrderStatus();
+
+      // 设置轮询 - 如果后端API已准备好，可以取消注释
+      // const pollingInterval = setInterval(fetchOrderStatus, 10000);
+      // return () => clearInterval(pollingInterval);
+    }
+
+    // 以下为模拟进度逻辑，实际开发中可以使用上面注释的API获取真实进度
     const timer1 = setTimeout(() => {
       setCurrentStep(1);
       setProgressPercent(33);
-    }, 10000); // 10秒后
+      message.info('厨师已开始制作您的美食！');
+    }, 7000);
 
     // 模拟3分钟后即将完成
     const timer2 = setTimeout(() => {
       setCurrentStep(2);
       setProgressPercent(66);
-    }, 20000); // 20秒后
+      message.success('您的美食即将完成...');
+    }, 14000); // 14秒后
 
     // 模拟5分钟后完成
     const timer3 = setTimeout(() => {
       setCurrentStep(3);
       setProgressPercent(100);
-    }, 30000); // 30秒后
+      // 显示完成通知
+      notification.success({
+        message: '订单已完成',
+        description: '您的美食已准备完成，请凭订单号到前台取餐！',
+        duration: 0,
+        placement: 'topRight'
+      });
+    }, 21000); // 21秒后
 
     // 倒计时更新
     const countdownTimer = setInterval(() => {
@@ -69,7 +124,7 @@ function Waiting() {
       clearTimeout(timer3);
       clearInterval(countdownTimer);
     };
-  }, []);
+  }, [orderId]);
 
   // 动态生成订单活动记录
   const getTimelineItems = () => {
@@ -195,6 +250,7 @@ function Waiting() {
                 current={currentStep}
                 responsive
                 size="small"
+                progressDot
               >
                 {orderSteps.map((step, index) => (
                   <Step
@@ -235,6 +291,7 @@ function Waiting() {
             <div style={{ marginBottom: 16 }}>
               <Text type="secondary">订单编号：</Text>
               <Text copyable strong>{orderId || 'N/A'}</Text>
+              {!orderId && <Tag color="warning" style={{ marginLeft: 8 }}>无订单ID</Tag>}
             </div>
 
             <div style={{ marginBottom: 16 }}>
@@ -274,7 +331,12 @@ function Waiting() {
 
           {orderItems && orderItems.length > 0 && (
             <Card
-              title="订单明细"
+              title={
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>订单明细</span>
+                  <Tag color="blue">共{orderItems.length}项</Tag>
+                </div>
+              }
               bordered={true}
               size="small"
             >
@@ -284,13 +346,26 @@ function Waiting() {
                 renderItem={item => (
                   <List.Item>
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <Text>{item.name} x{item.quantity}</Text>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {item.img_url && (
+                          <Image
+                            src={item.img_url}
+                            alt={item.name}
+                            width={30}
+                            height={30}
+                            style={{ objectFit: 'cover', marginRight: 8, borderRadius: 4 }}
+                            preview={false}
+                            fallback="https://placehold.co/30x30/e8e8e8/787878?text=图片"
+                          />
+                        )}
+                        <Text>{item.name} x{item.quantity}</Text>
+                      </div>
                       <Text>￥{(item.price * item.quantity).toFixed(2)}</Text>
                     </div>
                   </List.Item>
                 )}
                 footer={
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
                     <Text strong>合计</Text>
                     <Text strong>￥{total?.toFixed(2) || '0.00'}</Text>
                   </div>

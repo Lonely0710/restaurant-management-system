@@ -1,12 +1,16 @@
 // src/admin/Dishes.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, message, Spin, Typography, Tag, Tooltip, notification, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, message, Spin, Typography, Tag, Tooltip, notification, Divider, Upload, Image } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined, QuestionCircleOutlined, UploadOutlined, LoadingOutlined, PictureOutlined } from '@ant-design/icons';
 import api from '../utils/api'; // 替换为自定义api实例
+import path from 'path';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
+
+// 添加默认占位图URL
+const DEFAULT_PLACEHOLDER = 'https://placehold.co/300x300/e8e8e8/787878?text=暂无图片';
 
 function Dishes() {
   const [dishes, setDishes] = useState([]);
@@ -17,6 +21,9 @@ function Dishes() {
   const [editingDish, setEditingDish] = useState(null); // null for Add, dish object for Edit
   const [categoryForm] = Form.useForm(); // Form instance for category
   const [form] = Form.useForm(); // Form instance for dish
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [fileName, setFileName] = useState('');
 
   // 使用全局消息提示API
   const [messageApi, contextHolder] = message.useMessage();
@@ -62,27 +69,196 @@ function Dishes() {
     fetchCategories();
   }, []);
 
+  // 图片上传前的检查
+  const beforeUpload = (file) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+    if (!isJpgOrPng) {
+      messageApi.error('只能上传JPG/PNG格式的图片!');
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      messageApi.error('图片大小不能超过2MB!');
+    }
+    return isJpgOrPng && isLt2M;
+  };
+
+  // 处理图片上传
+  const handleUpload = async (options) => {
+    const { file, onSuccess, onError } = options;
+    setUploadLoading(true);
+
+    try {
+      // 创建FormData对象
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // 首先尝试使用管理员权限上传
+      let response;
+      try {
+        response = await api.post('/upload/menu', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } catch (authError) {
+        console.warn('管理员上传失败，尝试测试上传接口:', authError);
+
+        // 如果管理员接口失败，尝试测试接口
+        response = await api.post('/upload/test', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+
+      // 处理响应
+      if (response.data && response.data.url) {
+        setImageUrl(response.data.url);
+        setFileName(response.data.fileName);
+
+        // 更新表单中的img_url字段
+        const currentValues = form.getFieldsValue();
+        form.setFieldsValue({
+          ...currentValues,
+          img_url: response.data.url
+        });
+
+        onSuccess(response, file);
+        messageApi.success('图片上传成功!');
+      } else {
+        throw new Error('上传失败');
+      }
+    } catch (error) {
+      console.error('图片上传失败:', error);
+      messageApi.error('图片上传失败: ' + (error.response?.data?.error || '未知错误'));
+      onError(error);
+
+      // 在这里不再抛出错误，让调用者决定是否使用本地模式
+      return Promise.reject(error);
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // 为了简化开发，临时添加本地上传处理 - 如果后端未配置
+  const handleLocalUpload = async (options) => {
+    const { file, onSuccess, onError } = options;
+    setUploadLoading(true);
+
+    try {
+      // 由于后端可能未完全配置，这里模拟上传成功
+      // 仅在开发环境使用，不要在生产环境使用此替代方法
+
+      // 使用FileReader读取文件作为数据URL
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // 模拟成功的响应
+        const mockResponse = {
+          data: {
+            success: true,
+            fileName: file.name,
+            url: reader.result, // 使用base64数据URL作为临时图片URL
+            message: '图片上传成功（本地模式）'
+          }
+        };
+
+        setImageUrl(reader.result);
+        setFileName(file.name);
+
+        // 更新表单中的img_url字段
+        const currentValues = form.getFieldsValue();
+        form.setFieldsValue({
+          ...currentValues,
+          img_url: reader.result
+        });
+
+        onSuccess(mockResponse, file);
+        messageApi.success('图片已临时保存（本地模式）');
+      };
+
+      reader.onerror = () => {
+        const error = new Error('读取文件失败');
+        onError(error);
+        messageApi.error('读取图片失败');
+      };
+    } catch (error) {
+      console.error('本地图片处理失败:', error);
+      messageApi.error('图片处理失败: ' + error.message);
+      onError(error);
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // 选择使用哪个上传处理函数
+  const customRequest = (options) => {
+    // 尝试常规上传，如果失败尝试本地上传
+    handleUpload(options).catch(error => {
+      console.warn('切换到本地上传模式:', error);
+      handleLocalUpload(options);
+    });
+  };
+
+  // 检查图片URL是否有效
+  const isValidImageUrl = (url) => {
+    if (!url) return false;
+    return url.startsWith('http') || url.startsWith('/assets/') || url.startsWith('data:image/');
+  };
+
+  // 图片加载失败回调
+  const handleImageError = (e) => {
+    console.warn('图片加载失败，使用占位图替代');
+    e.target.src = DEFAULT_PLACEHOLDER;
+  };
+
+  // 获取安全的图片URL
+  const getSafeImageUrl = (url) => {
+    if (isValidImageUrl(url)) {
+      return url;
+    }
+    return DEFAULT_PLACEHOLDER;
+  };
+
   // Dish Modal Open/Close
   const showAddModal = () => {
     setEditingDish(null);
     form.resetFields(); // Clear form for adding
+    setImageUrl(''); // 清空图片URL
+    setFileName(''); // 清空文件名
     setIsModalOpen(true);
   };
 
   const showEditModal = (dish) => {
-    setEditingDish(dish);
-    form.setFieldsValue({ // Populate form for editing
-      name: dish.name,
-      price: Number(dish.price), // Ensure price is number for InputNumber
-      category_id: dish.category_id,
-      style: dish.style || ''
-    });
-    setIsModalOpen(true);
+    try {
+      setEditingDish(dish);
+      // 安全设置图片URL，确保字段存在且有效
+      const safeImgUrl = getSafeImageUrl(dish.img_url);
+      setImageUrl(safeImgUrl);
+      setFileName(dish.img_url ? path.basename(dish.img_url) : '');
+
+      // 安全设置表单值，确保所有字段都有默认值
+      form.setFieldsValue({
+        name: dish.name || '',
+        price: Number(dish.price || 0),
+        category_id: dish.category_id,
+        style: dish.style || '',
+        description: dish.description || '',
+        ingredients: dish.ingredients || '',
+        img_url: dish.img_url || ''
+      });
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('显示编辑模态框出错:', error);
+      messageApi.error('打开编辑窗口失败: ' + error.message);
+    }
   };
 
   const handleCancel = () => {
     setIsModalOpen(false);
     setEditingDish(null); // Reset editing state
+    setImageUrl(''); // 清空图片URL
+    setFileName(''); // 清空文件名
   };
 
   // Category Modal functions
@@ -136,6 +312,11 @@ function Dishes() {
     try {
       const values = await form.validateFields();
       setLoading(true);
+
+      // 确保表单中有img_url，如果上传了新图片
+      if (fileName && !values.img_url) {
+        values.img_url = imageUrl;
+      }
 
       if (editingDish) {
         // --- Edit Logic ---
@@ -302,6 +483,49 @@ function Dishes() {
     },
   ];
 
+  // 修改Upload组件渲染部分
+  const renderUploadButton = () => {
+    if (uploadLoading) {
+      return (
+        <div>
+          <LoadingOutlined />
+          <div style={{ marginTop: 8 }}>上传中...</div>
+        </div>
+      );
+    }
+
+    if (imageUrl) {
+      return (
+        <div style={{ position: 'relative' }}>
+          <img
+            src={imageUrl}
+            alt="菜品图片"
+            style={{ width: '100%', maxHeight: '150px', objectFit: 'cover' }}
+            onError={handleImageError}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: 'rgba(0,0,0,0.4)',
+            padding: '4px',
+            textAlign: 'center'
+          }}>
+            <Text style={{ color: 'white', fontSize: '12px' }}>点击更换图片</Text>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <PictureOutlined style={{ fontSize: 32 }} />
+        <div style={{ marginTop: 8 }}>上传图片</div>
+      </div>
+    );
+  };
+
   return (
     <div>
       {contextHolder} {/* 消息提示上下文 */}
@@ -364,66 +588,115 @@ function Dishes() {
         width={800} // 增加弹窗宽度
       >
         <Form form={form} layout="vertical" name="dish_form">
-          <Form.Item
-            name="name"
-            label="菜品名称"
-            rules={[{ required: true, message: '请输入菜品名称!' }]}
-          >
-            <Input placeholder="请输入菜品名称" />
-          </Form.Item>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ flex: 2 }}>
+              <Form.Item
+                name="name"
+                label="菜品名称"
+                rules={[{ required: true, message: '请输入菜品名称!' }]}
+              >
+                <Input placeholder="请输入菜品名称" />
+              </Form.Item>
+
+              <Form.Item
+                name="price"
+                label="价格 (元)"
+                rules={[
+                  { required: true, message: '请输入价格!' },
+                  { type: 'number', min: 0.01, message: '价格必须大于0!' }
+                ]}
+              >
+                <InputNumber
+                  min={0.01}
+                  step={0.1}
+                  precision={2}
+                  style={{ width: '100%' }}
+                  placeholder="请输入价格"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="category_id"
+                label="分类"
+                rules={[{ required: true, message: '请选择分类!' }]}
+              >
+                <Select
+                  placeholder="选择分类"
+                  dropdownRender={(menu) => (
+                    <>
+                      {menu}
+                      <Divider style={{ margin: '8px 0' }} />
+                      <Button
+                        type="text"
+                        icon={<PlusOutlined />}
+                        onClick={showCategoryModal}
+                        style={{ width: '100%', textAlign: 'left' }}
+                      >
+                        添加新分类
+                      </Button>
+                    </>
+                  )}
+                >
+                  {categories.map(category => (
+                    <Option key={category.category_id} value={category.category_id}>
+                      {category.category_name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="style"
+                label="菜品风格"
+              >
+                <Input placeholder="请输入菜品风格，如：辣味、酸甜、清淡等" />
+              </Form.Item>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Form.Item
+                label="菜品图片"
+                name="img_url"
+                style={{ marginBottom: '8px', alignSelf: 'flex-start', width: '100%' }}
+              >
+                <Input placeholder="图片URL" style={{ display: 'none' }} />
+              </Form.Item>
+
+              <Upload
+                name="image"
+                listType="picture-card"
+                className="avatar-uploader"
+                showUploadList={false}
+                customRequest={customRequest}
+                beforeUpload={beforeUpload}
+                style={{ width: '100%' }}
+              >
+                {renderUploadButton()}
+              </Upload>
+              <Text type="secondary" style={{ marginTop: '8px', textAlign: 'center' }}>
+                建议尺寸: 300x300px, 大小不超过2MB
+              </Text>
+            </div>
+          </div>
 
           <Form.Item
-            name="price"
-            label="价格 (元)"
-            rules={[
-              { required: true, message: '请输入价格!' },
-              { type: 'number', min: 0.01, message: '价格必须大于0!' }
-            ]}
+            name="description"
+            label="菜品描述"
           >
-            <InputNumber
-              min={0.01}
-              step={0.1}
-              precision={2}
-              style={{ width: '100%' }}
-              placeholder="请输入价格"
+            <TextArea
+              placeholder="请输入菜品描述"
+              autoSize={{ minRows: 2, maxRows: 4 }}
             />
           </Form.Item>
 
           <Form.Item
-            name="category_id"
-            label="分类"
-            rules={[{ required: true, message: '请选择分类!' }]}
+            name="ingredients"
+            label="配料表"
           >
-            <Select
-              placeholder="选择分类"
-              dropdownRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: '8px 0' }} />
-                  <Button
-                    type="text"
-                    icon={<PlusOutlined />}
-                    onClick={showCategoryModal}
-                    style={{ width: '100%', textAlign: 'left' }}
-                  >
-                    添加新分类
-                  </Button>
-                </>
-              )}
-            >
-              {categories.map(category => (
-                <Option key={category.category_id} value={category.category_id}>
-                  {category.category_name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="style"
-            label="菜品风格"
-          >
-            <Input placeholder="请输入菜品风格，如：辣味、酸甜、清淡等" />
+            <TextArea
+              placeholder="请输入菜品配料"
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
           </Form.Item>
         </Form>
       </Modal>

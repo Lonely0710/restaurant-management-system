@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Checkbox, Card, Typography, Row, Col, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const { Title, Text } = Typography;
 
@@ -16,7 +16,7 @@ const Login = () => {
         setLoading(true);
         try {
             // 调用登录API
-            const response = await axios.post('/api/auth/login', {
+            const response = await api.post('/auth/login', {
                 phone: values.phone,
                 password: values.password
             });
@@ -35,7 +35,7 @@ const Login = () => {
                 navigate('/admin/dishes');
             } else if (response.data.user.identity === 1) {
                 // 员工跳转到员工界面
-                navigate('/staff');
+                navigate('/admin/dishes');
             } else {
                 // 普通用户跳转到点餐页面
                 navigate('/customer/ordering');

@@ -8,9 +8,10 @@ import {
 import {
   ShoppingCartOutlined, PlusOutlined, MinusOutlined,
   AppstoreOutlined, BarsOutlined, InfoCircleOutlined,
-  UserOutlined, ArrowLeftOutlined
+  UserOutlined, ArrowLeftOutlined, SyncOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import api from '../utils/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Meta } = Card;
@@ -20,6 +21,7 @@ function Ordering() {
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [cart, setCart] = useState({}); // { menu_id: quantity }
   const [cartVisible, setCartVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -27,122 +29,102 @@ function Ordering() {
   const [selectedDish, setSelectedDish] = useState(null);
   const navigate = useNavigate();
 
+  // 获取所有菜品分类
+  const fetchCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const response = await api.get('/categories');
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setCategories(response.data);
+        console.log('获取到的分类数据:', response.data);
+      } else {
+        console.log('未获取到分类数据或格式不正确');
+        setCategories([]);
+      }
+    } catch (error) {
+      console.error('获取分类失败:', error);
+      message.error('无法加载分类数据: ' + (error.response?.data?.error || '请稍后重试'));
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // 根据category_id获取分类名称
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.category_id === categoryId);
+    return category ? category.category_name : '未分类';
+  };
+
+  // 获取菜单数据
   const fetchMenu = async () => {
     setLoading(true);
-    console.log("Fetching menu...");
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("获取菜品数据...");
     try {
-      // Dummy Data:
-      const dummyData = [
-        {
-          menu_id: 1,
-          name: '宫保鸡丁',
-          price: 25.00,
-          category: '热菜',
-          description: '经典川菜，鸡丁嫩滑，花生香脆',
-          ingredients: '鸡胸肉、花生、干辣椒、葱姜蒜',
-          calories: 350,
-          spicy_level: 2,
-          cooking_time: '15分钟',
-          is_recommended: true,
-          rating: 4.7,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=宫保鸡丁'
-        },
-        {
-          menu_id: 2,
-          name: '水煮鱼',
-          price: 58.00,
-          category: '热菜',
-          description: '麻辣鲜香，鱼片嫩滑',
-          ingredients: '草鱼、豆芽、干辣椒、花椒',
-          calories: 420,
-          spicy_level: 5,
-          cooking_time: '20分钟',
-          is_recommended: true,
-          rating: 4.8,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=水煮鱼'
-        },
-        {
-          menu_id: 3,
-          name: '米饭',
-          price: 2.00,
-          category: '主食',
-          description: '东北大米',
-          ingredients: '优质大米',
-          calories: 200,
-          spicy_level: 0,
-          cooking_time: '30分钟',
-          is_recommended: false,
-          rating: 4.5,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=米饭'
-        },
-        {
-          menu_id: 4,
-          name: '可乐',
-          price: 5.00,
-          category: '饮料',
-          description: '冰镇',
-          ingredients: '可乐、冰块',
-          calories: 150,
-          spicy_level: 0,
-          cooking_time: '即饮',
-          is_recommended: false,
-          rating: 4.0,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=可乐'
-        },
-        {
-          menu_id: 5,
-          name: '拍黄瓜',
-          price: 12.00,
-          category: '凉菜',
-          description: '清爽可口',
-          ingredients: '黄瓜、蒜末、香醋',
-          calories: 80,
-          spicy_level: 1,
-          cooking_time: '10分钟',
-          is_recommended: true,
-          rating: 4.6,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=拍黄瓜'
-        },
-        {
-          menu_id: 6,
-          name: '香煎鸡排',
-          price: 22.00,
-          category: '热菜',
-          description: '外酥里嫩，香气四溢',
-          ingredients: '鸡胸肉、面包糠、鸡蛋',
-          calories: 380,
-          spicy_level: 0,
-          cooking_time: '15分钟',
-          is_recommended: true,
-          rating: 4.5,
-          img_url: 'https://placehold.co/300x300/e8e8e8/787878?text=香煎鸡排'
-        },
-      ];
+      // 使用API获取菜单数据
+      const response = await api.get('/menu');
 
-      // 提取所有类别
-      const allCategories = [...new Set(dummyData.map(item => item.category))];
-      setCategories(allCategories);
+      // 验证响应数据
+      if (!Array.isArray(response.data)) {
+        throw new Error('返回的菜品数据格式不正确');
+      }
 
-      // 存储为分类对象
-      const groupedMenu = dummyData.reduce((acc, item) => {
-        (acc[item.category] = acc[item.category] || []).push(item);
-        return acc;
-      }, {});
+      const menuData = response.data;
+      console.log('获取到菜品数据:', menuData.length);
+
+      // 按分类ID分组菜品
+      const groupedMenu = {};
+
+      // 先确保所有分类都有一个空数组
+      categories.forEach(cat => {
+        groupedMenu[cat.category_id] = [];
+      });
+
+      // 然后将菜品添加到相应分类
+      menuData.forEach(item => {
+        const categoryId = item.category_id;
+        if (categoryId) {
+          // 如果这个分类ID还没有对应的数组，创建一个
+          if (!groupedMenu[categoryId]) {
+            groupedMenu[categoryId] = [];
+          }
+          // 将菜品添加到对应分类的数组中
+          groupedMenu[categoryId].push(item);
+        } else {
+          // 未分类的菜品
+          if (!groupedMenu['uncategorized']) {
+            groupedMenu['uncategorized'] = [];
+          }
+          groupedMenu['uncategorized'].push(item);
+        }
+      });
 
       setMenu(groupedMenu);
+
+      // 如果菜单为空，显示消息
+      if (menuData.length === 0) {
+        message.info('暂无菜品数据');
+      }
     } catch (error) {
-      console.error("Failed to fetch menu:", error);
-      message.error('加载菜单失败!');
+      console.error("获取菜品失败:", error);
+      message.error('加载菜品失败: ' + (error.response?.data?.error || '服务器错误，请稍后重试'));
+      setMenu({});
     } finally {
       setLoading(false);
     }
   };
 
+  // 组件加载时获取数据
   useEffect(() => {
-    fetchMenu();
+    fetchCategories(); // 先获取分类
   }, []);
+
+  // 分类数据加载完成后获取菜单
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchMenu(); // 分类加载完成后再获取菜品
+    }
+  }, [categories]);
 
   // Cart Handlers
   const addToCart = (item) => {
@@ -205,8 +187,10 @@ function Ordering() {
   // 获取当前显示的菜品
   const getDisplayedItems = () => {
     if (selectedCategory === 'all') {
+      // 返回所有分类下的菜品
       return Object.values(menu).flat();
     }
+    // 返回选定分类下的菜品
     return menu[selectedCategory] || [];
   };
 
@@ -244,123 +228,143 @@ function Ordering() {
         <div style={{ padding: '16px 0' }}>
           <Title level={4} style={{ textAlign: 'center' }}>菜品分类</Title>
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedCategory]}
-          style={{ borderRight: 0 }}
-          onClick={({ key }) => setSelectedCategory(key)}
-        >
-          <Menu.Item key="all" icon={<AppstoreOutlined />}>
-            全部菜品
-          </Menu.Item>
-          <Menu.Divider />
-          {categories.map(category => (
-            <Menu.Item key={category} icon={<BarsOutlined />}>
-              {category}
+        <Spin spinning={categoriesLoading} size="small">
+          <Menu
+            mode="inline"
+            selectedKeys={[selectedCategory]}
+            style={{ borderRight: 0 }}
+            onClick={({ key }) => setSelectedCategory(key)}
+          >
+            <Menu.Item key="all" icon={<AppstoreOutlined />}>
+              全部菜品
             </Menu.Item>
-          ))}
-        </Menu>
+            <Menu.Divider />
+            {categories.length > 0 ? (
+              categories.map(category => (
+                <Menu.Item key={category.category_id} icon={<BarsOutlined />}>
+                  {category.category_name}
+                </Menu.Item>
+              ))
+            ) : (
+              <Menu.Item disabled>暂无分类</Menu.Item>
+            )}
+          </Menu>
+        </Spin>
       </Sider>
 
       {/* 主内容区 */}
       <Content style={{ padding: '0 24px', minHeight: 280 }}>
-        <Spin spinning={loading}>
+        <Spin spinning={loading} tip="加载菜品中...">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Title level={3}>{selectedCategory === 'all' ? '全部菜品' : selectedCategory}</Title>
-            <Badge count={totalQuantity} size="small">
+            <Title level={3}>{selectedCategory === 'all' ? '全部菜品' : getCategoryName(selectedCategory)}</Title>
+            <Space>
               <Button
-                type="primary"
-                icon={<ShoppingCartOutlined />}
-                onClick={showDrawer}
+                onClick={fetchMenu}
+                icon={<SyncOutlined />}
+                style={{ marginRight: 8 }}
               >
-                购物车
+                刷新
               </Button>
-            </Badge>
+              <Badge count={totalQuantity} size="small">
+                <Button
+                  type="primary"
+                  icon={<ShoppingCartOutlined />}
+                  onClick={showDrawer}
+                >
+                  购物车
+                </Button>
+              </Badge>
+            </Space>
           </div>
 
-          <Row gutter={[16, 16]}>
-            {getDisplayedItems().map(item => (
-              <Col xs={24} sm={12} key={item.menu_id}>
-                <Card
-                  hoverable
-                  bordered
-                  style={{ display: 'flex', height: '100%' }}
-                  bodyStyle={{ padding: 16, flex: 1, display: 'flex' }}
-                >
-                  {/* 左侧图片 */}
-                  <div style={{ flex: '0 0 120px', marginRight: 16 }}>
-                    <Image
-                      src={item.img_url}
-                      alt={item.name}
-                      style={{ width: 120, height: 120, objectFit: 'cover' }}
-                      preview={false}
-                      onClick={() => showDishDetail(item)}
-                    />
-                  </div>
-
-                  {/* 右侧内容 */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Text strong style={{ fontSize: 16 }}>{item.name}</Text>
-                        <Text type="danger" strong>￥{item.price.toFixed(2)}</Text>
-                      </div>
-
-                      <Paragraph ellipsis={{ rows: 2 }} style={{ color: '#666', marginBottom: 8 }}>
-                        {item.description || '暂无描述'}
-                      </Paragraph>
-
-                      <div style={{ marginBottom: 8 }}>
-                        {item.spicy_level > 0 &&
-                          <Tag color="red">辣度: {item.spicy_level}</Tag>
-                        }
-                        {item.is_recommended &&
-                          <Tag color="green">推荐</Tag>
-                        }
-                        <Tag color="blue">{item.category}</Tag>
-                      </div>
+          {Object.keys(menu).length === 0 && !loading ? (
+            <Empty description="暂无菜品数据" />
+          ) : (
+            <Row gutter={[16, 16]}>
+              {getDisplayedItems().map(item => (
+                <Col xs={24} sm={12} key={item.menu_id}>
+                  <Card
+                    hoverable
+                    bordered
+                    style={{ display: 'flex', height: '100%' }}
+                    bodyStyle={{ padding: 16, flex: 1, display: 'flex' }}
+                  >
+                    {/* 左侧图片 */}
+                    <div style={{ flex: '0 0 120px', marginRight: 16 }}>
+                      <Image
+                        src={item.img_url || 'https://placehold.co/120x120/e8e8e8/787878?text=暂无图片'}
+                        alt={item.name}
+                        style={{ width: 120, height: 120, objectFit: 'cover' }}
+                        preview={false}
+                        onClick={() => showDishDetail(item)}
+                        fallback="https://placehold.co/120x120/f5f5f5/999999?text=加载失败"
+                      />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* 右侧内容 */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                       <div>
-                        <Button
-                          type="text"
-                          icon={<InfoCircleOutlined />}
-                          onClick={() => showDishDetail(item)}
-                        >
-                          详情
-                        </Button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text strong style={{ fontSize: 16 }}>{item.name}</Text>
+                          <Text type="danger" strong>￥{parseFloat(item.price).toFixed(2)}</Text>
+                        </div>
+
+                        <Paragraph ellipsis={{ rows: 2 }} style={{ color: '#666', marginBottom: 8 }}>
+                          {item.description || '暂无描述'}
+                        </Paragraph>
+
+                        <div style={{ marginBottom: 8 }}>
+                          {item.spicy_level > 0 &&
+                            <Tag color="red">辣度: {item.spicy_level}</Tag>
+                          }
+                          {item.is_recommended &&
+                            <Tag color="green">推荐</Tag>
+                          }
+                          <Tag color="blue">{getCategoryName(item.category_id)}</Tag>
+                        </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <Button
-                          type="primary"
-                          shape="circle"
-                          icon={<MinusOutlined />}
-                          size="small"
-                          onClick={() => updateQuantity(item.menu_id, (cart[item.menu_id] || 0) - 1)}
-                          disabled={!cart[item.menu_id]}
-                        />
-                        <span style={{ margin: '0 8px', minWidth: '20px', textAlign: 'center' }}>
-                          {cart[item.menu_id] || 0}
-                        </span>
-                        <Button
-                          type="primary"
-                          shape="circle"
-                          icon={<PlusOutlined />}
-                          size="small"
-                          onClick={() => addToCart(item)}
-                        />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <Button
+                            type="text"
+                            icon={<InfoCircleOutlined />}
+                            onClick={() => showDishDetail(item)}
+                          >
+                            详情
+                          </Button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <Button
+                            type="primary"
+                            shape="circle"
+                            icon={<MinusOutlined />}
+                            size="small"
+                            onClick={() => updateQuantity(item.menu_id, (cart[item.menu_id] || 0) - 1)}
+                            disabled={!cart[item.menu_id]}
+                          />
+                          <span style={{ margin: '0 8px', minWidth: '20px', textAlign: 'center' }}>
+                            {cart[item.menu_id] || 0}
+                          </span>
+                          <Button
+                            type="primary"
+                            shape="circle"
+                            icon={<PlusOutlined />}
+                            size="small"
+                            onClick={() => addToCart(item)}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
 
-          {getDisplayedItems().length === 0 && (
-            <Empty description="暂无菜品" />
+          {getDisplayedItems().length === 0 && Object.keys(menu).length > 0 && (
+            <Empty description={`${getCategoryName(selectedCategory)}分类下暂无菜品`} />
           )}
         </Spin>
       </Content>
@@ -404,9 +408,10 @@ function Ordering() {
           <div>
             <div style={{ display: 'flex', marginBottom: 24 }}>
               <Image
-                src={selectedDish.img_url}
+                src={selectedDish.img_url || 'https://placehold.co/300x300/e8e8e8/787878?text=暂无图片'}
                 alt={selectedDish.name}
                 style={{ width: 300, height: 300, objectFit: 'cover' }}
+                fallback="https://placehold.co/300x300/f5f5f5/999999?text=加载失败"
               />
               <div style={{ flex: 1, marginLeft: 24 }}>
                 <Title level={3}>{selectedDish.name}</Title>
@@ -414,16 +419,16 @@ function Ordering() {
                 <Text style={{ marginLeft: 8 }}>{selectedDish.rating}</Text>
 
                 <Paragraph style={{ margin: '16px 0' }}>
-                  {selectedDish.description}
+                  {selectedDish.description || '暂无描述'}
                 </Paragraph>
 
                 <div style={{ marginBottom: 16 }}>
                   {selectedDish.is_recommended && (
                     <Tag color="green">厨师推荐</Tag>
                   )}
-                  <Tag color="blue">{selectedDish.category}</Tag>
-                  <Tag color="orange">烹饪时间: {selectedDish.cooking_time}</Tag>
-                  <Tag color="purple">卡路里: {selectedDish.calories}cal</Tag>
+                  <Tag color="blue">{getCategoryName(selectedDish.category_id)}</Tag>
+                  <Tag color="orange">烹饪时间: {selectedDish.cooking_time || '未知'}</Tag>
+                  <Tag color="purple">卡路里: {selectedDish.calories || '未知'}cal</Tag>
                 </div>
 
                 {selectedDish.spicy_level > 0 && (
@@ -439,16 +444,16 @@ function Ordering() {
 
             <Descriptions title="详细信息" bordered>
               <Descriptions.Item label="配料" span={3}>
-                {selectedDish.ingredients}
+                {selectedDish.ingredients || '暂无配料信息'}
               </Descriptions.Item>
               <Descriptions.Item label="分类">
-                {selectedDish.category}
+                {getCategoryName(selectedDish.category_id)}
               </Descriptions.Item>
               <Descriptions.Item label="烹饪时间">
-                {selectedDish.cooking_time}
+                {selectedDish.cooking_time || '未知'}
               </Descriptions.Item>
               <Descriptions.Item label="卡路里">
-                {selectedDish.calories} 卡路里
+                {selectedDish.calories || '未知'} 卡路里
               </Descriptions.Item>
             </Descriptions>
 
@@ -518,14 +523,25 @@ function Ordering() {
             renderItem={item => (
               <List.Item style={{ padding: '12px 0' }}>
                 <div style={{ display: 'flex', width: '100%' }}>
-                  <Image
-                    src={item.img_url}
-                    alt={item.name}
-                    width={60}
-                    height={60}
-                    style={{ objectFit: 'cover', borderRadius: 4 }}
-                    preview={false}
-                  />
+                  <div style={{ position: 'relative', flex: '0 0 60px' }}>
+                    <Image
+                      src={item.img_url || 'https://placehold.co/60x60/e8e8e8/787878?text=暂无图片'}
+                      alt={item.name}
+                      width={60}
+                      height={60}
+                      style={{ objectFit: 'cover', borderRadius: 4 }}
+                      preview={false}
+                      fallback="https://placehold.co/60x60/e8e8e8/787878?text=暂无图片"
+                    />
+                    <Badge count={item.quantity}
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        backgroundColor: '#1890ff'
+                      }}
+                    />
+                  </div>
                   <div style={{ flex: 1, marginLeft: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Text strong>{item.name}</Text>

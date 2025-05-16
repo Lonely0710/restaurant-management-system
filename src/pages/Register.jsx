@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Row, Col, message } from 'antd';
 import { UserOutlined, LockOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const { Title, Text } = Typography;
 
@@ -20,7 +20,7 @@ const Register = () => {
         setLoading(true);
         try {
             // 调用后端注册接口，后端会使用AddUser存储过程
-            const response = await axios.post('/api/auth/register', {
+            const response = await api.post('/auth/register', {
                 name: values.name,
                 phone: values.phone,
                 password: values.password,

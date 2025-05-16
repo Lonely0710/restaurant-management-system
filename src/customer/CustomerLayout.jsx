@@ -1,7 +1,7 @@
 // src/customer/CustomerLayout.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { Layout, Typography, Button, Menu, Avatar, Dropdown, Space, Badge, Divider } from 'antd';
+import { Layout, Typography, Button, Menu, Avatar, Dropdown, Space, Badge, Divider, message } from 'antd';
 import {
   HomeOutlined,
   UserOutlined,
@@ -17,12 +17,43 @@ const { Title, Text } = Typography;
 
 function CustomerLayout() {
   const navigate = useNavigate();
-  // 假设的用户数据
   const [user, setUser] = useState({
-    name: '张三',
+    name: '顾客',
     avatar: null,
-    notifications: 2
+    notifications: 0,
+    user_id: null
   });
+
+  // 从localStorage获取用户信息
+  useEffect(() => {
+    const userInfo = localStorage.getItem('user');
+    if (userInfo) {
+      try {
+        const parsedUser = JSON.parse(userInfo);
+        setUser({
+          ...user,
+          name: parsedUser.name || '顾客',
+          user_id: parsedUser.user_id
+        });
+      } catch (error) {
+        console.error('解析用户信息失败:', error);
+      }
+    } else {
+      // 如果没有用户信息，重定向到登录页
+      message.warning('请先登录');
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // 登出处理
+  const handleLogout = () => {
+    // 清除本地存储中的用户信息和token
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    message.success('已成功退出登录');
+    // 跳转到首页
+    navigate('/');
+  };
 
   // 用户菜单
   const userMenu = (
@@ -54,7 +85,7 @@ function CustomerLayout() {
           icon: <LogoutOutlined />,
           label: '退出登录',
           danger: true,
-          onClick: () => navigate('/')
+          onClick: handleLogout
         }
       ]}
     />
@@ -74,7 +105,7 @@ function CustomerLayout() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
       }}>
         <Title level={3} style={{ margin: 0, color: '#1890ff', flexGrow: 1 }}>
-          欢迎光临 - 在线点餐
+          欢迎光临, {user.name} - 在线点餐
         </Title>
 
         <Space size={16}>
