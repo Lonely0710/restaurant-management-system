@@ -8,7 +8,7 @@ import {
 import {
   ClockCircleOutlined, CheckCircleOutlined, SyncOutlined,
   RocketOutlined, LoadingOutlined, SmileOutlined,
-  FieldTimeOutlined, ShoppingOutlined
+  FieldTimeOutlined, ShoppingOutlined, PictureOutlined
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
@@ -344,23 +344,25 @@ function Waiting() {
                 size="small"
                 dataSource={orderItems}
                 renderItem={item => (
-                  <List.Item>
+                  <List.Item key={item.order_item_id || item.menu_id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {item.img_url && (
+                        {item.img_url ? (
                           <Image
                             src={item.img_url}
-                            alt={item.name}
+                            alt={item.name || '已删除菜品'}
                             width={30}
                             height={30}
                             style={{ objectFit: 'cover', marginRight: 8, borderRadius: 4 }}
                             preview={false}
-                            fallback="https://placehold.co/30x30/e8e8e8/787878?text=图片"
+                            fallback="https://placehold.co/30x30/e8e8e8/787878?text=无图"
                           />
+                        ) : (
+                          <PictureOutlined style={{ marginRight: 8, fontSize: 20, color: '#999' }} />
                         )}
-                        <Text>{item.name} x{item.quantity}</Text>
+                        <Text>{item.name ? `${item.name} x${item.quantity}` : `[菜品已删除] x${item.quantity}`}</Text>
                       </div>
-                      <Text>￥{(item.price * item.quantity).toFixed(2)}</Text>
+                      <Text>{item.price ? `￥${(item.price * item.quantity).toFixed(2)}` : '价格未知'}</Text>
                     </div>
                   </List.Item>
                 )}

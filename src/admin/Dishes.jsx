@@ -244,7 +244,6 @@ function Dishes() {
         category_id: dish.category_id,
         style: dish.style || '',
         description: dish.description || '',
-        ingredients: dish.ingredients || '',
         img_url: dish.img_url || ''
       });
       setIsModalOpen(true);
@@ -313,10 +312,7 @@ function Dishes() {
       const values = await form.validateFields();
       setLoading(true);
 
-      // 确保表单中有img_url，如果上传了新图片
-      if (fileName && !values.img_url) {
-        values.img_url = imageUrl;
-      }
+      console.log("提交的表单值:", values); // <-- 添加日志，检查提交的数据
 
       if (editingDish) {
         // --- Edit Logic ---
@@ -685,16 +681,6 @@ function Dishes() {
           >
             <TextArea
               placeholder="请输入菜品描述"
-              autoSize={{ minRows: 2, maxRows: 4 }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="ingredients"
-            label="配料表"
-          >
-            <TextArea
-              placeholder="请输入菜品配料"
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
           </Form.Item>
