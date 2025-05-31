@@ -15,6 +15,7 @@ import orderRoutes from './routes/orders.js';
 import paymentRoutes from './routes/payments.js';
 import authRoutes from './routes/auth.js';
 import uploadRoutes from './routes/upload.js';
+import testRoutes from './routes/testRoutes.js';
 
 // 导入数据库连接测试函数
 import { testConnection } from './config/db.js';
@@ -111,6 +112,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/test/concurrency', testRoutes);
 
 // 处理404路由
 app.use((req, res) => {

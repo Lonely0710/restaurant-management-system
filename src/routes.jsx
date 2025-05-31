@@ -11,6 +11,7 @@ import Waiting from './customer/Waiting';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ConcurrencyTestPage from './pages/test/ConcurrencyTestPage';
 import { Navigate } from 'react-router-dom';
 
 // 错误边界组件
@@ -62,6 +63,10 @@ const router = createBrowserRouter([
       {
         path: 'register',
         element: <Register />
+      },
+      {
+        path: 'test/concurrency',
+        element: <ConcurrencyTestPage />
       },
       {
         path: 'admin',
