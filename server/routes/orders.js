@@ -21,4 +21,16 @@ router.post('/add-item', orderController.addItemToOrder);
 // 获取用户的所有订单
 router.get('/user/:userId', orderController.getOrdersByUserId);
 
+// 获取员工订单趋势
+router.get('/trend/employee', orderController.getEmployeeOrderTrend);
+
+// 获取员工订单统计
+router.get('/stats/employee', orderController.getEmployeeOrderStats);
+
+// 获取员工汇总统计
+router.get('/summary/employee', orderController.getEmployeeOrderSummary);
+
+// 获取近7天每日支付笔数趋势
+router.get('/payment-trend/employee', orderController.getEmployeePaymentTrend);
+
 export default router;

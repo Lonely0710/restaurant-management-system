@@ -170,4 +170,73 @@ export const addItemToOrder = async (req, res) => {
 async function checkOrderExists(order_id) {
     const [rows] = await pool.query('SELECT 1 FROM Orders WHERE order_id = ?', [order_id]);
     return rows.length > 0;
-} 
+}
+
+// 获取员工订单趋势（近7天每日订单数）
+export const getEmployeeOrderTrend = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT DATE(order_date) AS date, COUNT(*) AS count
+       FROM Orders
+       WHERE order_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       GROUP BY DATE(order_date)
+       ORDER BY date ASC`
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('获取员工订单趋势失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 获取员工订单统计（总订单数、今日订单数）
+export const getEmployeeOrderStats = async (req, res) => {
+    try {
+        // 总订单数
+        const [totalRows] = await pool.query('SELECT COUNT(*) AS total FROM Orders');
+        // 今日订单数
+        const [todayRows] = await pool.query('SELECT COUNT(*) AS today FROM Orders WHERE DATE(order_date) = CURDATE()');
+        res.json({
+            total: totalRows[0].total,
+            today: todayRows[0].today
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 获取员工汇总统计（总销售额、支付笔数、近7天销售额）
+export const getEmployeeOrderSummary = async (req, res) => {
+    try {
+        // 总销售额
+        const [totalRows] = await pool.query('SELECT IFNULL(SUM(amount),0) AS totalAmount FROM Payment');
+        // 支付笔数
+        const [countRows] = await pool.query('SELECT COUNT(*) AS paymentCount FROM Payment');
+        // 近7天销售额
+        const [salesRows] = await pool.query(`SELECT IFNULL(SUM(amount),0) AS salesAmount FROM Payment WHERE order_id IN (SELECT order_id FROM Orders WHERE order_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY))`);
+        res.json({
+            totalAmount: parseFloat(totalRows[0].totalAmount),
+            paymentCount: countRows[0].paymentCount,
+            salesAmount: parseFloat(salesRows[0].salesAmount)
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 获取近7天每日支付笔数趋势
+export const getEmployeePaymentTrend = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT DATE(o.order_date) AS date, COUNT(p.payment_id) AS count
+             FROM Payment p
+             JOIN Orders o ON p.order_id = o.order_id
+             WHERE o.order_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+             GROUP BY DATE(o.order_date)
+             ORDER BY date ASC`
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}; 

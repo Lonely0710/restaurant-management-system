@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Typography, Row, Col, message } from 'antd';
+import { Form, Input, Button, Checkbox, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../utils/api';
+import '../styles/Login.css';
+import logo from '../assets/AppIcon_FoodJournal.png';
 
 const { Title, Text } = Typography;
 
@@ -35,7 +37,7 @@ const Login = () => {
                 navigate('/admin/dishes');
             } else if (response.data.user.identity === 1) {
                 // 员工跳转到员工界面
-                navigate('/admin/dishes');
+                navigate('/employee');
             } else {
                 // 普通用户跳转到点餐页面
                 navigate('/customer/ordering');
@@ -49,14 +51,16 @@ const Login = () => {
     };
 
     return (
-        <Row justify="center" align="middle" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-            <Col xs={22} sm={16} md={12} lg={8} xl={6}>
-                <Card bordered={false} style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                        <Title level={2}>用户登录</Title>
-                        <Text type="secondary">食物志点餐系统</Text>
+        <div className="login-bg">
+            <div className="login-flex-center">
+                <Card bordered={false} className="login-card">
+                    <div className="login-logo">
+                        <div className="login-logo-bg">
+                            <img src={logo} alt="logo" style={{ width: 48, marginBottom: 0 }} />
+                        </div>
+                        <Title level={2} style={{ marginBottom: 0, marginTop: 16 }}>食物志点餐系统</Title>
+                        <Text type="secondary">员工/管理员/顾客统一登录</Text>
                     </div>
-
                     <Form
                         name="login"
                         initialValues={{ remember: true }}
@@ -106,9 +110,10 @@ const Login = () => {
                             </Form.Item>
                         )}
                     </Form>
+                    <div className="login-footer">©2024 食物志 · Ant Design Pro 风格</div>
                 </Card>
-            </Col>
-        </Row>
+            </div>
+        </div>
     );
 };
 

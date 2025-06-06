@@ -3,12 +3,19 @@ import { Table, Button, Modal, Form, Input, Switch, Select, Space, Popconfirm, m
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../utils/api'; // 替换为自定义api实例
 import moment from 'moment';
+import { Navigate } from 'react-router-dom';
 
 const { Title } = Typography;
 const { Option } = Select;
 const { Password } = Input;
 
 function Users() {
+    // 身份识别：只有超级管理员(0)和管理员(1)可以访问
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.identity !== 0 && user.identity !== 1) {
+        return <Navigate to="/" replace />;
+    }
+
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);

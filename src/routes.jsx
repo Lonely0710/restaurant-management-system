@@ -13,6 +13,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ConcurrencyTestPage from './pages/test/ConcurrencyTestPage';
 import { Navigate } from 'react-router-dom';
+import EmployeeDashboard, { EmployeeLayout } from './employee/EmployeeDashboard';
+import LayoutWithRole from './admin/AdminLayout';
 
 // 错误边界组件
 const ErrorBoundary = () => {
@@ -46,6 +48,17 @@ const ErrorBoundary = () => {
   );
 };
 
+// 身份识别高阶组件
+function EmployeeRouteGuard({ children }) {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // 1 代表员工
+  if (user.identity === 1) {
+    return children;
+  } else {
+    return <Navigate to="/" replace />;
+  }
+}
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -70,7 +83,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        element: <AdminLayout />,
+        element: <LayoutWithRole role="admin" />,
         children: [
           {
             index: true,
@@ -117,6 +130,32 @@ const router = createBrowserRouter([
           {
             path: 'waiting',
             element: <Waiting />
+          }
+        ]
+      },
+      {
+        path: 'employee',
+        element: (
+          <EmployeeRouteGuard>
+            <EmployeeLayout />
+          </EmployeeRouteGuard>
+        ),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/employee/dashboard" replace />
+          },
+          {
+            path: 'dashboard',
+            element: <EmployeeDashboard />
+          },
+          {
+            path: 'orders',
+            element: <Orders />
+          },
+          {
+            path: 'dishes',
+            element: <Dishes />
           }
         ]
       },

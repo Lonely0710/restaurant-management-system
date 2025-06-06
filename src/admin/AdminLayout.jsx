@@ -13,7 +13,7 @@ import {
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
 
-function AdminLayout() {
+function LayoutWithRole({ role }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState(location.pathname);
@@ -22,10 +22,11 @@ function AdminLayout() {
     setCurrentPath(location.pathname);
   }, [location]);
 
+  // 动态菜单：员工不显示用户管理
   const menuItems = [
-    { key: 'dishes', label: <Link to="/admin/dishes">菜品管理</Link>, icon: <AppstoreOutlined /> },
-    { key: 'orders', label: <Link to="/admin/orders">订单管理</Link>, icon: <ShoppingCartOutlined /> },
-    { key: 'users', label: <Link to="/admin/users">用户管理</Link>, icon: <UserOutlined /> },
+    { key: 'dishes', label: <Link to={`/${role}/dishes`}>菜品管理</Link>, icon: <AppstoreOutlined /> },
+    { key: 'orders', label: <Link to={`/${role}/orders`}>订单管理</Link>, icon: <ShoppingCartOutlined /> },
+    ...(role === 'admin' ? [{ key: 'users', label: <Link to="/admin/users">用户管理</Link>, icon: <UserOutlined /> }] : []),
     {
       key: 'logout',
       label: '退出登录',
@@ -33,50 +34,52 @@ function AdminLayout() {
       danger: true,
       onClick: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
   ];
 
-  // Determine breadcrumb items based on path
+  // 面包屑
   const breadcrumbItems = [
     <Breadcrumb.Item key="home">
       <Link to="/">首页</Link>
     </Breadcrumb.Item>,
-    <Breadcrumb.Item key="admin">管理员</Breadcrumb.Item>
+    <Breadcrumb.Item key={role}>{role === 'admin' ? '管理员' : '员工'}</Breadcrumb.Item>
   ];
-  if (currentPath === '/admin/orders') {
+  if (currentPath === `/${role}/orders`) {
     breadcrumbItems.push(<Breadcrumb.Item key="orders">订单管理</Breadcrumb.Item>);
-  } else if (currentPath === '/admin/dishes') {
+  } else if (currentPath === `/${role}/dishes`) {
     breadcrumbItems.push(<Breadcrumb.Item key="dishes">菜品管理</Breadcrumb.Item>);
+  } else if (role === 'admin' && currentPath === '/admin/users') {
+    breadcrumbItems.push(<Breadcrumb.Item key="users">用户管理</Breadcrumb.Item>);
   }
-
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider breakpoint="lg" collapsedWidth="0">
         <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-          Admin CMS
+          {role === 'admin' ? 'Admin CMS' : 'Employee CMS'}
         </div>
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[currentPath]}
           items={menuItems}
-          style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 64px)' }} // Adjust height to fit back button
+          style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 64px)' }}
         />
       </Sider>
       <Layout>
         <Header style={{ padding: '0 16px', background: '#fff' }}>
-          {/* Can add Header content like user profile dropdown */}
-          <Title level={4} style={{ margin: '16px 0', color: '#1890ff' }}>餐厅管理系统 - 管理员</Title>
+          <Title level={4} style={{ margin: '16px 0', color: '#1890ff' }}>
+            餐厅管理系统 - {role === 'admin' ? '管理员' : '员工'}
+          </Title>
         </Header>
         <Content style={{ margin: '0 16px' }}>
           <Breadcrumb style={{ margin: '16px 0' }}>
             {breadcrumbItems}
           </Breadcrumb>
           <div style={{ padding: 24, minHeight: 360, background: '#fff', borderRadius: '8px' }}>
-            {/* Child route component (Orders or Dishes) renders here */}
             <Outlet />
           </div>
         </Content>
@@ -85,4 +88,4 @@ function AdminLayout() {
   );
 }
 
-export default AdminLayout;
+export default LayoutWithRole;
